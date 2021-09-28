@@ -1488,8 +1488,8 @@ mod test {
         (0..size).map(|_| 33).collect()
     }
 
-    #[tokio::test]
     #[ignore]
+    #[tokio::test]
     async fn streaming_test_put_get_delete_big_object() {
         let path = "stream_test_big";
         std::fs::remove_file(path).unwrap_or_else(|_| {});

@@ -46,22 +46,34 @@ pub struct Object {
 #[derive(Deserialize, Debug, Clone)]
 pub struct Tagging {
     #[serde(rename = "TagSet")]
-    pub tag_set: Vec<Tag>,
+    pub tag_set: TagSet,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct TagSet {
+    #[serde(rename = "Tag")]
+    pub tags: Vec<Tag>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Tag {
-    #[serde(rename = "Tag")]
-    pub kvpair: KVPair,
+    // #[serde(rename = "Tag")]
+    // pub kvpair: KVPair,
+    #[serde(rename = "Key")]
+    pub key: String,
+    #[serde(rename = "Value")]
+    pub value: String,
 }
 
 impl Tag {
     pub fn key(&self) -> String {
-        self.kvpair.key.clone()
+        self.key.clone()
+        // "".into()
     }
 
     pub fn value(&self) -> String {
-        self.kvpair.value.clone()
+        self.value.clone()
+        // "".into()
     }
 }
 
@@ -275,4 +287,50 @@ pub struct AwsError {
     pub message: String,
     #[serde(rename = "RequestId")]
     pub request_id: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_xml_rs;
+    use super::{Tagging, Tag, KVPair};
+
+    #[test]
+    fn check_tagging() {
+        let input = r##"
+<Tagging>
+	<TagSet>
+		<Tag>
+			<Key>modified</Key>
+			<Value>1633124094</Value>
+		</Tag>
+		<Tag>
+			<Key>status_changed</Key>
+			<Value>1633124094</Value>
+		</Tag>
+		<Tag>
+			<Key>accessed</Key>
+			<Value>1633124094</Value>
+		</Tag>
+		<Tag>
+			<Key>created</Key>
+			<Value>1633124094</Value>
+		</Tag>
+	</TagSet>
+</Tagging>
+        "##;
+        let res: Tagging = serde_xml_rs::from_reader(input.as_bytes()).unwrap();
+        assert_eq!(res.tag_set.tags.len(), 4);
+    }
+
+    #[test]
+    fn check_tagging2() {
+        let input = r##"
+		<Tag Key="modified" Value="1633124094" />
+		<Tag Key="created" Value="1633124094" />
+		<Tag Key="accessed" Value="1633124094" />
+		<Tag Key="status_changed" Value="1633124094" />
+        "##;
+        let res: Vec<Tag> = serde_xml_rs::from_reader(input.as_bytes()).unwrap();
+        assert_eq!(res.len(), 4);
+    }
 }

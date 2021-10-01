@@ -18,19 +18,19 @@ struct Storage {
 const MESSAGE: &str = "I want to go to S3";
 
 pub fn main() -> Result<(), S3Error> {
-    let aws = Storage {
-        name: "aws".into(),
-        region: "eu-central-1".parse()?,
-        // credentials: Credentials::from_profile(Some("rust-s3"))?,
-        credentials: Credentials::from_env_specific(
-            Some("EU_AWS_ACCESS_KEY_ID"),
-            Some("EU_AWS_SECRET_ACCESS_KEY"),
-            None,
-            None,
-        )?,
-        bucket: "rust-s3-test".to_string(),
-        location_supported: true,
-    };
+    // let aws = Storage {
+    //     name: "aws".into(),
+    //     region: "eu-central-1".parse()?,
+    //     // credentials: Credentials::from_profile(Some("rust-s3"))?,
+    //     credentials: Credentials::from_env_specific(
+    //         Some("EU_AWS_ACCESS_KEY_ID"),
+    //         Some("EU_AWS_SECRET_ACCESS_KEY"),
+    //         None,
+    //         None,
+    //     )?,
+    //     bucket: "rust-s3-test".to_string(),
+    //     location_supported: true,
+    // };
 
     // let aws_public = Storage {
     //     name: "aws-public".into(),
@@ -40,16 +40,16 @@ pub fn main() -> Result<(), S3Error> {
     //     location_supported: true,
     // };
 
-    // let minio = Storage {
-    //     name: "minio".into(),
-    //     region: Region::Custom {
-    //         region: "us-east-1".into(),
-    //         endpoint: "https://minio.adder.black".into(),
-    //     },
-    //     credentials: Credentials::from_profile(Some("minio"))?,
-    //     bucket: "rust-s3".to_string(),
-    //     location_supported: false,
-    // };
+    let minio = Storage {
+        name: "minio".into(),
+        region: Region::Custom {
+            region: "us-east-1".into(),
+            endpoint: "http://localhost:9000".into(),
+        },
+        credentials: Credentials::from_profile(Some("minio"))?,
+        bucket: "rust-s3".to_string(),
+        location_supported: false,
+    };
 
     // let yandex = Storage {
     //     name: "yandex".into(),
@@ -59,7 +59,7 @@ pub fn main() -> Result<(), S3Error> {
     //     location_supported: false,
     // };
 
-    for backend in vec![aws] {
+    for backend in vec![minio] {
         println!("Running {}", backend.name);
         // Create Bucket in REGION for BUCKET
         let bucket = Bucket::new(&backend.bucket, backend.region, backend.credentials)?;

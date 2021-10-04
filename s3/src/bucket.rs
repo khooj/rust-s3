@@ -1053,7 +1053,6 @@ impl Bucket {
 
         let tagging = if result.1 == 200 {
             let result_string = String::from_utf8_lossy(&result.0);
-            println!("{}", result_string);
             Some(serde_xml::from_reader(result_string.as_bytes())?)
         } else {
             None

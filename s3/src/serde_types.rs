@@ -280,6 +280,14 @@ pub struct HeadObjectResult {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct CopyObjectResult {
+    #[serde(rename = "ETag")]
+    pub etag: String,
+    #[serde(rename = "LastModified")]
+    pub last_modified: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct AwsError {
     #[serde(rename = "Code")]
     pub code: String,

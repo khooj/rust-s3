@@ -407,6 +407,11 @@ impl<'a> Request<'a> {
             // headers.insert(header::ACCEPT_CHARSET, HeaderValue::from_str("UTF-8")?);
         } else if let Command::CreateBucket { ref config} = self.command {
             config.add_headers(&mut headers)?;
+        } else if let Command::CopyObject { src_key, .. } = self.command {
+            headers.insert(
+                "X-Amz-Copy-Source",
+                format!("{}/{}", self.bucket.name, src_key).parse()?,
+            );
         }
 
         // This must be last, as it signs the other headers, omitted if no secret key is provided

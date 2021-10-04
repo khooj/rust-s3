@@ -10,7 +10,7 @@ use crate::creds::Credentials;
 use crate::region::Region;
 use crate::request::{Headers, Query, Request};
 use crate::serde_types::{
-    BucketLocationResult, CompleteMultipartUploadData, HeadObjectResult,
+    BucketLocationResult, CompleteMultipartUploadData, CopyObjectResult, HeadObjectResult,
     InitiateMultipartUploadResponse, ListBucketResult, Part, Tagging,
 };
 use crate::{Result, S3Error};
@@ -1250,6 +1250,31 @@ impl Bucket {
         Ok(results)
     }
 
+    pub async fn copy_object(
+        &self,
+        src: String,
+        dst: String,
+    ) -> Result<(CopyObjectResult, u16)> {
+        let command = Command::CopyObject {
+            src_key: &src,
+        };
+        let request = Request::new(self, &dst, command);
+        let (response, code) = request.response_data_future(false).await?;
+        match serde_xml::from_reader(response.as_slice()) {
+            Ok(copy_object_result) => Ok((copy_object_result, code)),
+            Err(_) => {
+                let mut err = S3Error::from("Could not deserialize result");
+                err.data = Some(String::from_utf8_lossy(response.as_slice()).to_string());
+                Err(err)
+            }
+        }
+    }
+
+    pub fn copy_object_blocking(&self, src: String, dst: String) -> Result<(CopyObjectResult, u16)> {
+        let mut rt = Runtime::new()?;
+        Ok(rt.block_on(self.copy_object(src, dst))?)
+    }
+
     /// Get path_style field of the Bucket struct
     pub fn is_path_style(&self) -> bool {
         self.path_style
@@ -1559,7 +1584,10 @@ mod test {
         assert_eq!(test, data);
         let (head_object_result, code) = bucket.head_object(s3_path).await.unwrap();
         assert_eq!(code, 200);
-        assert_eq!(head_object_result.content_type.unwrap(), "application/octet-stream".to_owned());
+        assert_eq!(
+            head_object_result.content_type.unwrap(),
+            "application/octet-stream".to_owned()
+        );
         // println!("{:?}", head_object_result);
         let (_, code) = bucket.delete_object(s3_path).await.unwrap();
         assert_eq!(code, 204);
@@ -1581,7 +1609,10 @@ mod test {
         assert_eq!(test, data);
         let (head_object_result, code) = bucket.head_object(s3_path).await.unwrap();
         assert_eq!(code, 200);
-        assert_eq!(head_object_result.content_type.unwrap(), "application/octet-stream".to_owned());
+        assert_eq!(
+            head_object_result.content_type.unwrap(),
+            "application/octet-stream".to_owned()
+        );
         // println!("{:?}", head_object_result);
         let (_, code) = bucket.delete_object(s3_path).await.unwrap();
         assert_eq!(code, 204);
@@ -1603,7 +1634,10 @@ mod test {
         assert_eq!(test, data);
         let (head_object_result, code) = bucket.head_object(s3_path).await.unwrap();
         assert_eq!(code, 200);
-        assert_eq!(head_object_result.content_type.unwrap(), "application/octet-stream".to_owned());
+        assert_eq!(
+            head_object_result.content_type.unwrap(),
+            "application/octet-stream".to_owned()
+        );
         // println!("{:?}", head_object_result);
         let (_, code) = bucket.delete_object(s3_path).await.unwrap();
         assert_eq!(code, 204);
@@ -1625,12 +1659,15 @@ mod test {
         assert_eq!(test, data);
         let (head_object_result, code) = bucket.head_object_blocking(s3_path).unwrap();
         assert_eq!(code, 200);
-        assert_eq!(head_object_result.content_type.unwrap(), "application/octet-stream".to_owned());
+        assert_eq!(
+            head_object_result.content_type.unwrap(),
+            "application/octet-stream".to_owned()
+        );
         // println!("{:?}", head_object_result);
         let (_, code) = bucket.delete_object_blocking(s3_path).unwrap();
         assert_eq!(code, 204);
     }
-    
+
     #[test]
     #[ignore]
     fn test_presign_put() {

@@ -5,7 +5,7 @@ use std::str;
 use s3::bucket::Bucket;
 use s3::creds::Credentials;
 use s3::region::Region;
-use s3::S3Error;
+use s3::{BucketConfiguration, S3Error};
 
 struct Storage {
     name: String,
@@ -46,7 +46,7 @@ pub fn main() -> Result<(), S3Error> {
             region: "us-east-1".into(),
             endpoint: "http://localhost:9000".into(),
         },
-        credentials: Credentials::from_profile(Some("minio"))?,
+        credentials: Credentials::from_env()?,
         bucket: "rust-s3".to_string(),
         location_supported: false,
     };
@@ -111,6 +111,11 @@ pub fn main() -> Result<(), S3Error> {
         assert_eq!(code, 200);
         assert_eq!(data.len(), 3072);
         assert_eq!(data, random_bytes);
+
+        let (_, code) = bucket.copy_object_blocking("random.bin".into(), "random2.bin".into())?;
+        assert_eq!(code, 200);
+        let (_, code) = bucket.get_object_blocking("random2.bin")?;
+        assert_eq!(code, 200);
     }
 
     Ok(())

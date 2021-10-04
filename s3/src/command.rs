@@ -47,7 +47,8 @@ pub enum Command<'a> {
         data: CompleteMultipartUploadData,
     },
     CreateBucket { config: BucketConfiguration },
-    DeleteBucket
+    DeleteBucket,
+    CopyObject { src_key: &'a str }
 }
 
 impl<'a> Command<'a> {
@@ -62,7 +63,8 @@ impl<'a> Command<'a> {
             | Command::PutObjectTagging { .. }
             | Command::PresignPut { .. }
             | Command::UploadPart { .. }
-            | Command::CreateBucket { .. } => Method::PUT,
+            | Command::CreateBucket { .. }
+            | Command::CopyObject { .. } => Method::PUT,
             Command::DeleteObject
             | Command::DeleteObjectTagging
             | Command::AbortMultipartUpload { .. } 

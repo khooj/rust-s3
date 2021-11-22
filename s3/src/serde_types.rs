@@ -116,6 +116,18 @@ pub struct CompleteMultipartUploadData {
     pub parts: Vec<Part>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct CompleteMultipartUploadResponse {
+    #[serde(rename = "Location")]
+    pub location: String,
+    #[serde(rename = "Bucket")]
+    pub bucket: String,
+    #[serde(rename = "Key")]
+    pub key: String,
+    #[serde(rename = "ETag")]
+    pub etag: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Part {
     #[serde(rename = "PartNumber")]
@@ -299,8 +311,8 @@ pub struct AwsError {
 
 #[cfg(test)]
 mod tests {
+    use super::{KVPair, Tag, Tagging};
     use serde_xml_rs;
-    use super::{Tagging, Tag, KVPair};
 
     #[test]
     fn check_tagging() {

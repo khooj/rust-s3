@@ -10,8 +10,9 @@ use crate::creds::Credentials;
 use crate::region::Region;
 use crate::request::{Headers, Query, Request};
 use crate::serde_types::{
-    BucketLocationResult, CompleteMultipartUploadData, CopyObjectResult, HeadObjectResult,
-    InitiateMultipartUploadResponse, ListBucketResult, Part, Tagging,
+    BucketLocationResult, CompleteMultipartUploadData, CompleteMultipartUploadResponse,
+    CopyObjectResult, HeadObjectResult, InitiateMultipartUploadResponse, ListBucketResult, Part,
+    Tagging,
 };
 use crate::{Result, S3Error};
 
@@ -416,12 +417,7 @@ impl Bucket {
         reader: &mut R,
         s3_path: &str,
     ) -> Result<u16> {
-        let command = Command::InitiateMultipartUpload;
-        let path = format!("{}?uploads", s3_path);
-        let request = Request::new(self, &path, command);
-        let (data, code) = request.response_data_future(false).await?;
-        let msg: InitiateMultipartUploadResponse =
-            serde_xml::from_str(std::str::from_utf8(data.as_slice())?)?;
+        let (msg, code) = self.create_multipart_upload(s3_path).await?;
 
         let mut part_number: u32 = 0;
         let mut etags = Vec::new();
@@ -431,28 +427,15 @@ impl Bucket {
             if chunk.len() < CHUNK_SIZE {
                 if part_number == 0 {
                     // Files is not big enough for multipart upload, going with regular put_object
-                    let abort = Command::AbortMultipartUpload {
-                        upload_id: &msg.upload_id,
-                    };
-                    let abort_path = format!("{}?uploadId={}", msg.key, &msg.upload_id);
-                    let abort_request = Request::new(self, &abort_path, abort);
-                    let (_, _code) = abort_request.response_data_future(false).await?;
+                    self.abort_multipart_upload(&msg.key, &msg.upload_id)
+                        .await?;
                     self.put_object(s3_path, chunk.as_slice()).await?;
                     break;
                 } else {
                     part_number += 1;
-                    let command = Command::PutObject {
-                        // part_number,
-                        content: &chunk,
-                        content_type: "application/octet-stream", // upload_id: &msg.upload_id,
-                    };
-                    let path = format!(
-                        "{}?partNumber={}&uploadId={}",
-                        msg.key, part_number, &msg.upload_id
-                    );
-                    let request = Request::new(self, &path, command);
-                    let (data, _code) = request.response_data_future(true).await?;
-                    let etag = std::str::from_utf8(data.as_slice())?;
+                    let (etag, _code) = self
+                        .upload_part(&msg.key, &msg.upload_id, part_number, &chunk)
+                        .await?;
                     etags.push(etag.to_string());
                     let inner_data = etags
                         .clone()
@@ -463,31 +446,15 @@ impl Bucket {
                             part_number: i as u32 + 1,
                         })
                         .collect::<Vec<Part>>();
-                    let data = CompleteMultipartUploadData { parts: inner_data };
-                    let complete = Command::CompleteMultipartUpload {
-                        upload_id: &msg.upload_id,
-                        data,
-                    };
-                    let complete_path = format!("{}?uploadId={}", msg.key, &msg.upload_id);
-                    let complete_request = Request::new(self, &complete_path, complete);
-                    let (_data, _code) = complete_request.response_data_future(false).await?;
-                    // let response = std::str::from_utf8(data.as_slice())?;
+                    self.complete_multipart_upload(&msg.key, &msg.upload_id, inner_data)
+                        .await?;
                     break;
                 }
             } else {
                 part_number += 1;
-                let command = Command::PutObject {
-                    // part_number,
-                    content: &chunk,
-                    content_type: "application/octet-stream", // upload_id: &msg.upload_id,
-                };
-                let path = format!(
-                    "{}?partNumber={}&uploadId={}",
-                    msg.key, part_number, &msg.upload_id
-                );
-                let request = Request::new(self, &path, command);
-                let (data, _code) = request.response_data_future(true).await?;
-                let etag = std::str::from_utf8(data.as_slice())?;
+                let (etag, _code) = self
+                    .upload_part(&msg.key, &msg.upload_id, part_number, &chunk)
+                    .await?;
                 etags.push(etag.to_string());
             }
         }
@@ -1250,14 +1217,8 @@ impl Bucket {
         Ok(results)
     }
 
-    pub async fn copy_object(
-        &self,
-        src: String,
-        dst: String,
-    ) -> Result<(CopyObjectResult, u16)> {
-        let command = Command::CopyObject {
-            src_key: &src,
-        };
+    pub async fn copy_object(&self, src: String, dst: String) -> Result<(CopyObjectResult, u16)> {
+        let command = Command::CopyObject { src_key: &src };
         let request = Request::new(self, &dst, command);
         let (response, code) = request.response_data_future(false).await?;
         match serde_xml::from_reader(response.as_slice()) {
@@ -1270,9 +1231,78 @@ impl Bucket {
         }
     }
 
-    pub fn copy_object_blocking(&self, src: String, dst: String) -> Result<(CopyObjectResult, u16)> {
+    pub fn copy_object_blocking(
+        &self,
+        src: String,
+        dst: String,
+    ) -> Result<(CopyObjectResult, u16)> {
         let mut rt = Runtime::new()?;
         Ok(rt.block_on(self.copy_object(src, dst))?)
+    }
+
+    pub async fn create_multipart_upload<S: AsRef<str>>(
+        &self,
+        key: S,
+    ) -> Result<(InitiateMultipartUploadResponse, u16)> {
+        let command = Command::InitiateMultipartUpload;
+        let path = format!("{}?uploads", key.as_ref());
+        let request = Request::new(self, &path, command);
+        let (data, code) = request.response_data_future(false).await?;
+        let msg: InitiateMultipartUploadResponse =
+            serde_xml::from_str(std::str::from_utf8(data.as_slice())?)?;
+        Ok((msg, code))
+    }
+
+    pub async fn abort_multipart_upload<S: AsRef<str>>(&self, key: S, upload_id: S) -> Result<u16> {
+        let abort = Command::AbortMultipartUpload {
+            upload_id: upload_id.as_ref(),
+        };
+        let abort_path = format!("{}?uploadId={}", key.as_ref(), upload_id.as_ref());
+        let abort_request = Request::new(self, &abort_path, abort);
+        let (_, code) = abort_request.response_data_future(false).await?;
+        Ok(code)
+    }
+
+    pub async fn upload_part<S: AsRef<str>>(
+        &self,
+        key: S,
+        upload_id: S,
+        part_number: u32,
+        chunk: &[u8],
+    ) -> Result<(String, u16)> {
+        let command = Command::PutObject {
+            // part_number,
+            content: chunk,
+            content_type: "application/octet-stream", // upload_id: &msg.upload_id,
+        };
+        let path = format!(
+            "{}?partNumber={}&uploadId={}",
+            key.as_ref(),
+            part_number,
+            upload_id.as_ref()
+        );
+        let request = Request::new(self, &path, command);
+        let (data, code) = request.response_data_future(true).await?;
+        let etag = std::str::from_utf8(data.as_slice())?;
+        Ok((etag.to_owned(), code))
+    }
+
+    pub async fn complete_multipart_upload<S: AsRef<str>>(
+        &self,
+        key: S,
+        upload_id: S,
+        parts: Vec<Part>,
+    ) -> Result<(CompleteMultipartUploadResponse, u16)> {
+        let data = CompleteMultipartUploadData { parts };
+        let complete = Command::CompleteMultipartUpload {
+            upload_id: upload_id.as_ref(),
+            data,
+        };
+        let complete_path = format!("{}?uploadId={}", key.as_ref(), upload_id.as_ref());
+        let complete_request = Request::new(self, &complete_path, complete);
+        let (data, code) = complete_request.response_data_future(false).await?;
+        let response = serde_xml::from_str(std::str::from_utf8(data.as_slice())?)?;
+        Ok((response, code))
     }
 
     /// Get path_style field of the Bucket struct

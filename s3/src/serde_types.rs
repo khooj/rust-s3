@@ -117,7 +117,7 @@ pub struct CompleteMultipartUploadData {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct CompleteMultipartUploadResponse {
+pub struct CompleteMultipartUploadResult {
     #[serde(rename = "Location")]
     pub location: String,
     #[serde(rename = "Bucket")]

@@ -10,7 +10,7 @@ use crate::creds::Credentials;
 use crate::region::Region;
 use crate::request::{Headers, Query, Request};
 use crate::serde_types::{
-    BucketLocationResult, CompleteMultipartUploadData, CompleteMultipartUploadResponse,
+    BucketLocationResult, CompleteMultipartUploadData, CompleteMultipartUploadResult,
     CopyObjectResult, HeadObjectResult, InitiateMultipartUploadResponse, ListBucketResult, Part,
     Tagging,
 };
@@ -25,6 +25,8 @@ use reqwest::header::HeaderMap;
 
 use async_std::fs::File;
 use async_std::path::Path;
+
+use log::debug;
 
 pub const CHUNK_SIZE: usize = 8_388_608; // 8 Mebibytes, min is 5 (5_242_880);
 
@@ -1292,7 +1294,7 @@ impl Bucket {
         key: S,
         upload_id: S,
         parts: Vec<Part>,
-    ) -> Result<(CompleteMultipartUploadResponse, u16)> {
+    ) -> Result<(CompleteMultipartUploadResult, u16)> {
         let data = CompleteMultipartUploadData { parts };
         let complete = Command::CompleteMultipartUpload {
             upload_id: upload_id.as_ref(),
@@ -1301,7 +1303,8 @@ impl Bucket {
         let complete_path = format!("{}?uploadId={}", key.as_ref(), upload_id.as_ref());
         let complete_request = Request::new(self, &complete_path, complete);
         let (data, code) = complete_request.response_data_future(false).await?;
-        let response = serde_xml::from_str(std::str::from_utf8(data.as_slice())?)?;
+        let s = std::str::from_utf8(data.as_slice())?;
+        let response = serde_xml::from_str(s)?;
         Ok((response, code))
     }
 

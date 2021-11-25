@@ -153,10 +153,15 @@ impl Bucket {
         region: Region,
         credentials: Credentials,
         mut config: BucketConfiguration,
+        path_style: bool,
     ) -> Result<CreateBucketResponse> {
         config.set_region(region.clone());
         let command = Command::CreateBucket { config };
-        let bucket = Bucket::new(name, region, credentials)?;
+        let bucket = if path_style { 
+            Bucket::new_with_path_style(name, region, credentials)?
+        } else {
+            Bucket::new(name, region, credentials)?
+        };
         let request = Request::new(&bucket, "", command);
         let (data, response_code) = request.response_data_future(false).await?;
         let response_text = std::str::from_utf8(&data)?;
@@ -1748,6 +1753,7 @@ mod test {
             "us-east-1".parse().unwrap(),
             test_aws_credentials(),
             config,
+            false,
         )
         .await
         .unwrap();
@@ -1769,6 +1775,7 @@ mod test {
             "eu-central-1".parse().unwrap(),
             test_aws_credentials(),
             config,
+            false,
         )
         .await
         .unwrap();
@@ -1790,6 +1797,7 @@ mod test {
             "eu-central-1".parse().unwrap(),
             test_aws_credentials(),
             config,
+            false,
         )
         .await
         .unwrap();

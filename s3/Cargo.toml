@@ -42,7 +42,8 @@ async-std = "1"
 http = "0.2"
 cfg-if = "1"
 uuid = "0.8"
-
+yaserde = "0.8"
+yaserde_derive = "0.8"
 
 [features]
 default = ["native-tls"]

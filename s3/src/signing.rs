@@ -369,7 +369,7 @@ mod tests {
             </ListBucketResult>
         "###;
         let deserialized: ListBucketResult =
-            serde_xml::from_reader(result_string.as_bytes()).expect("Parse error!");
+            yaserde::de::from_reader(result_string.as_bytes()).expect("Parse error!");
         assert!(deserialized.is_truncated);
     }
 

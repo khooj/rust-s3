@@ -68,7 +68,7 @@ pub fn main() -> Result<(), S3Error> {
         let results = bucket.list_blocking("".to_string(), None)?;
         for (list, code) in results {
             assert_eq!(200, code);
-            println!("{:?}", list.contents.len());
+            // println!("{:?}", list.contents.len());
         }
 
         // Make sure that our "test_file" doesn't exist, delete it if it does. Note

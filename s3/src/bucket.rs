@@ -1102,7 +1102,7 @@ impl Bucket {
         };
         let request = Request::new(self, "/", command);
         let (response, status_code) = request.response_data_future(false).await?;
-        match serde_xml::from_reader(response.as_slice()) {
+        match yaserde::de::from_reader(response.as_slice()) {
             Ok(list_bucket_result) => Ok((list_bucket_result, status_code)),
             Err(_) => {
                 let mut err = S3Error::from("Could not deserialize result");

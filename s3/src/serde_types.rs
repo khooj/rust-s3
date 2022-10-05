@@ -9,36 +9,36 @@ pub struct InitiateMultipartUploadResponse {
 }
 
 /// Owner information for the object
-#[derive(Deserialize, Debug, Clone)]
+#[derive(YaDeserialize, Debug, Clone)]
 pub struct Owner {
-    #[serde(rename = "DisplayName")]
+    #[yaserde(rename = "DisplayName")]
     /// Object owner's name.
     pub display_name: String,
-    #[serde(rename = "ID")]
+    #[yaserde(rename = "ID")]
     /// Object owner's ID.
     pub id: String,
 }
 
 /// An individual object in a `ListBucketResult`
-#[derive(Deserialize, Debug, Clone)]
+#[derive(YaDeserialize, Debug, Clone)]
 pub struct Object {
-    #[serde(rename = "LastModified")]
+    #[yaserde(rename = "LastModified", child)]
     /// Date and time the object was last modified.
     pub last_modified: String,
-    #[serde(rename = "ETag")]
+    #[yaserde(rename = "ETag", child)]
     /// The entity tag is an MD5 hash of the object. The ETag only reflects changes to the
     /// contents of an object, not its metadata.
     pub e_tag: String,
-    #[serde(rename = "StorageClass")]
+    #[yaserde(rename = "StorageClass", child)]
     /// STANDARD | STANDARD_IA | REDUCED_REDUNDANCY | GLACIER
     pub storage_class: String,
-    #[serde(rename = "Key")]
+    #[yaserde(rename = "Key", child)]
     /// The object's key
     pub key: String,
-    #[serde(rename = "Owner")]
+    #[yaserde(rename = "Owner")]
     /// Bucket owner
     pub owner: Option<Owner>,
-    #[serde(rename = "Size")]
+    #[yaserde(rename = "Size", child)]
     /// Size in bytes of the object.
     pub size: u64,
 }
@@ -86,6 +86,8 @@ pub struct KVPair {
 }
 
 use std::fmt;
+
+use yaserde_derive::{YaSerialize, YaDeserialize};
 
 impl fmt::Display for CompleteMultipartUploadData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -143,56 +145,84 @@ pub struct BucketLocationResult {
 }
 
 /// The parsed result of a s3 bucket listing
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Default, YaDeserialize)]
+#[yaserde(
+    namespace = "http://s3.amazonaws.com/doc/2006-03-01/",
+)]
 pub struct ListBucketResult {
-    #[serde(rename = "Name")]
+    #[yaserde(rename = "Name", child)]
     /// Name of the bucket.
     pub name: String,
-    #[serde(rename = "NextMarker")]
+    #[yaserde(rename = "NextMarker", child)]
     /// When the response is truncated (that is, the IsTruncated element value in the response
     /// is true), you can use the key name in this field as a marker in the subsequent request
     /// to get next set of objects. Amazon S3 lists objects in UTF-8 character encoding in
     /// lexicographical order.
     pub next_marker: Option<String>,
-    #[serde(rename = "Delimiter")]
+    #[yaserde(rename = "Delimiter", child)]
     /// A delimiter is a character you use to group keys.
     pub delimiter: Option<String>,
-    #[serde(rename = "MaxKeys")]
+    #[yaserde(rename = "MaxKeys", child)]
     /// Sets the maximum number of keys returned in the response body.
     pub max_keys: i32,
-    #[serde(rename = "Prefix")]
+    #[yaserde(rename = "Prefix", child)]
     /// Limits the response to keys that begin with the specified prefix.
     pub prefix: String,
-    #[serde(rename = "Marker")]
+    #[yaserde(rename = "Marker", child)]
     /// Indicates where in the bucket listing begins. Marker is included in the response if
     /// it was sent with the request.
     pub marker: Option<String>,
-    #[serde(rename = "EncodingType")]
+    #[yaserde(rename = "EncodingType", child)]
     /// Specifies the encoding method to used
     pub encoding_type: Option<String>,
-    #[serde(
-        rename = "IsTruncated",
-        deserialize_with = "super::deserializer::bool_deserializer"
+    #[yaserde(
+        rename = "IsTruncated", child,
+        // deserialize_with = "super::deserializer::bool_deserializer"
     )]
     ///  Specifies whether (true) or not (false) all of the results were returned.
     ///  If the number of results exceeds that specified by MaxKeys, all of the results
     ///  might not be returned.
     pub is_truncated: bool,
-    #[serde(rename = "NextContinuationToken", default)]
+    #[yaserde(rename = "NextContinuationToken", default, child)]
     pub next_continuation_token: Option<String>,
-    #[serde(rename = "Contents", default)]
-    /// Metadata about each object returned.
+    #[yaserde(rename = "Contents", default)]
+    // / Metadata about each object returned.
     pub contents: Vec<Object>,
-    #[serde(rename = "CommonPrefixes", default)]
-    /// All of the keys rolled up into a common prefix count as a single return when
-    /// calculating the number of returns.
-    pub common_prefixes: Option<Vec<CommonPrefix>>,
+    #[yaserde(rename = "CommonPrefixes", default)]
+    // / All of the keys rolled up into a common prefix count as a single return when
+    // / calculating the number of returns.
+    pub common_prefixes: Vec<CommonPrefix>,
 }
 
+/// Workaround enum for ListBucketResult
+// #[derive(Deserialize, Debug, Clone)]
+// pub enum ListBucketVecData {
+//     Name(String),
+//     NextMarker(Option<String>),
+//     Delimiter(Option<String>),
+//     MaxKeys(i32),
+//     Prefix(String),
+//     Marker(Option<String>),
+//     EncodingType(Option<String>),
+//     IsTruncated(#[serde(deserialize_with = "super::deserializer::bool_deserializer")] bool),
+//     NextContinuationToken(Option<String>),
+//     Contents(Object),
+//     CommonPrefixes(Option<CommonPrefix>),
+//     #[serde(other)]
+//     Other,
+// }
+
+// #[derive(Deserialize, Clone, Debug)]
+// pub struct ListBucketResultProxy {
+//     #[serde(rename = "$value")]
+//     pub vec_data: Vec<ListBucketVecData>,
+// }
+
 /// `CommonPrefix` is used to group keys
-#[derive(Deserialize, Debug, Clone)]
+#[derive(YaDeserialize, Debug, Clone)]
+#[yaserde(namespace = "http://s3.amazonaws.com/doc/2006-03-01/")]
 pub struct CommonPrefix {
-    #[serde(rename = "Prefix")]
+    #[yaserde(rename = "Prefix", child)]
     /// Keys that begin with the indicated prefix.
     pub prefix: String,
 }
@@ -311,7 +341,7 @@ pub struct AwsError {
 
 #[cfg(test)]
 mod tests {
-    use super::{KVPair, Tag, Tagging};
+    use super::{KVPair, ListBucketResult, Tag, Tagging};
     use serde_xml_rs;
 
     #[test]
@@ -352,5 +382,98 @@ mod tests {
         "##;
         let res: Vec<Tag> = serde_xml_rs::from_reader(input.as_bytes()).unwrap();
         assert_eq!(res.len(), 4);
+    }
+
+    #[test]
+    fn check_listbucket() {
+        let input = r##"
+        <?xml version= "1.0" encoding= "utf-8"?>
+<ListBucketResult xmlns= "http://s3.amazonaws.com/doc/2006-03-01/">
+	<Prefix>mobile/</Prefix>
+	<IsTruncated>false</IsTruncated>
+	<Delimiter>/</Delimiter>
+	<MaxKeys>1000</MaxKeys>
+	<KeyCount>27</KeyCount>
+	<Name>khooj-standard-webdav</Name>
+	<CommonPrefixes>
+		<Prefix>mobile/Alarms/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Android/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/AnkiDroid/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/AsciiCam/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Audiobooks/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Backup/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Books/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/DCIM/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Documents/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Download/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/KateDownloads/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/KatePhotos/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Movies/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Music/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Notifications/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/PhotoRuler/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Pictures/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Podcasts/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Recordings/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Ringtones/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Samsung/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/SdCardBackUp/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Slack/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/WhatsApp/</Prefix>
+	</CommonPrefixes>
+	<CommonPrefixes>
+		<Prefix>mobile/Сбербанк/</Prefix>
+	</CommonPrefixes>
+</ListBucketResult>
+        "##;
+
+        // let res: ListBucketResultProxy = serde_xml_rs::from_reader(input.as_bytes()).unwrap();
+        let res: ListBucketResult = yaserde::de::from_str(input).unwrap();
     }
 }

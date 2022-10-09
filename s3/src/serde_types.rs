@@ -10,6 +10,7 @@ pub struct InitiateMultipartUploadResponse {
 
 /// Owner information for the object
 #[derive(YaDeserialize, Debug, Clone)]
+#[yaserde(namespace = "http://s3.amazonaws.com/doc/2006-03-01/")]
 pub struct Owner {
     #[yaserde(rename = "DisplayName")]
     /// Object owner's name.
@@ -21,6 +22,7 @@ pub struct Owner {
 
 /// An individual object in a `ListBucketResult`
 #[derive(YaDeserialize, Debug, Clone)]
+#[yaserde(namespace = "http://s3.amazonaws.com/doc/2006-03-01/")]
 pub struct Object {
     #[yaserde(rename = "LastModified", child)]
     /// Date and time the object was last modified.
@@ -394,86 +396,61 @@ mod tests {
 	<Delimiter>/</Delimiter>
 	<MaxKeys>1000</MaxKeys>
 	<KeyCount>27</KeyCount>
-	<Name>khooj-standard-webdav</Name>
+	<Name>bucketname</Name>
 	<CommonPrefixes>
 		<Prefix>mobile/Alarms/</Prefix>
 	</CommonPrefixes>
+    <Contents>
+        <LastModified>somestring</LastModified>
+        <ETag>etag</ETag>
+        <StorageClass>STANDARD</StorageClass>
+        <Key>key</Key>
+        <Size>12313</Size>
+    </Contents>
 	<CommonPrefixes>
 		<Prefix>mobile/Android/</Prefix>
 	</CommonPrefixes>
 	<CommonPrefixes>
-		<Prefix>mobile/AnkiDroid/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/AsciiCam/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Audiobooks/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Backup/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Books/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/DCIM/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Documents/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Download/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/KateDownloads/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/KatePhotos/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
 		<Prefix>mobile/Movies/</Prefix>
 	</CommonPrefixes>
+    <Contents>
+        <LastModified>somestring</LastModified>
+        <ETag>etag</ETag>
+        <StorageClass>STANDARD</StorageClass>
+        <Key>key</Key>
+        <Size>12313</Size>
+    </Contents>
 	<CommonPrefixes>
-		<Prefix>mobile/Music/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Notifications/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/PhotoRuler/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Pictures/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Podcasts/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Recordings/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Ringtones/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Samsung/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/SdCardBackUp/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Slack/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/WhatsApp/</Prefix>
-	</CommonPrefixes>
-	<CommonPrefixes>
-		<Prefix>mobile/Сбербанк/</Prefix>
+		<Prefix>mobile123</Prefix>
 	</CommonPrefixes>
 </ListBucketResult>
         "##;
 
         // let res: ListBucketResultProxy = serde_xml_rs::from_reader(input.as_bytes()).unwrap();
         let res: ListBucketResult = yaserde::de::from_str(input).unwrap();
+
+        let input2 = r##"
+<?xml version= "1.0" encoding= "UTF-8"?>
+<ListBucketResult xmlns= "http://s3.amazonaws.com/doc/2006-03-01/">
+	<Name>test</Name>
+	<Prefix>litmus/movecoll/</Prefix>
+	<KeyCount>1</KeyCount>
+	<MaxKeys>1000</MaxKeys>
+	<Delimiter>/</Delimiter>
+	<IsTruncated>false</IsTruncated>
+	<Contents>
+		<Key>litmus/movecoll/.dir</Key>
+		<LastModified>2022-10-09T12:58:27.084Z</LastModified>
+		<ETag>&#34;d41d8cd98f00b204e9800998ecf8427e&#34;</ETag>
+		<Size>0</Size>
+		<Owner>
+			<ID>02d6176db174dc93cb1b899f7c6078f08654445fe8cf1b6ce98d8855f66bdbf4</ID>
+			<DisplayName>minio</DisplayName>
+		</Owner>
+		<StorageClass>STANDARD</StorageClass>
+	</Contents>
+</ListBucketResult>
+        "##;
+        let res: ListBucketResult = yaserde::de::from_str(input2).unwrap();
     }
 }
